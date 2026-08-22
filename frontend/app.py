@@ -16,6 +16,11 @@ except requests.exceptions.RequestException as e:
     st.error(f"백엔드 연결 실패: {e}")
     st.stop()
 
+st.sidebar.subheader("검색 조건")
+filter_region = st.sidebar.selectbox("지역", ["전체"] + list(locations.keys()))
+filter_min_score = st.sidebar.slider("최소 만족도", 1, 5, 1)
+filter_keyword = st.sidebar.text_input("메모 검색")
+
 with st.form("record_form"):
     record_name = st.text_input("이름")
     record_city = st.selectbox("지역", list(locations.keys()))
@@ -110,9 +115,23 @@ if user_res and user_res["count"] > 0:
 
 st.subheader("전체 기록")
 try:
-    records_res = requests.get(f"{BACKEND_URL}/records", timeout=5).json()
+    filter_params = {}
+    if filter_region != "전체":
+        filter_params["region"] = filter_region
+    if filter_min_score > 1:
+        filter_params["min_score"] = filter_min_score
+    if filter_keyword:
+        filter_params["keyword"] = filter_keyword
+
+    records_res = requests.get(
+        f"{BACKEND_URL}/records", params=filter_params, timeout=5
+    ).json()
+    st.sidebar.markdown(f"조건에 맞는 기록: {records_res['count']}건")
     if records_res["count"] == 0:
-        st.info("아직 기록이 없습니다. 위에서 첫 기록을 남겨보세요.")
+        if filter_params:
+            st.warning("조건에 맞는 기록이 없습니다. 조건을 완화해보세요.")
+        else:
+            st.info("아직 기록이 없습니다. 위에서 첫 기록을 남겨보세요.")
     else:
         st.dataframe(pd.DataFrame(records_res["records"]))
 except requests.exceptions.RequestException:
