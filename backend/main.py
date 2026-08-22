@@ -83,3 +83,29 @@ def get_records():
 
     records.reverse()
     return {"count": len(records), "records": records}
+
+
+@app.get("/records/user/{user_name}")
+def get_records_by_user(user_name: str):
+    records = []
+    if DATA_FILE.exists():
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    record = json.loads(line)
+                    if record.get("user_name") == user_name:
+                        records.append(record)
+
+    records.reverse()
+
+    if not records:
+        return {"user_name": user_name, "count": 0, "avg_score": 0, "records": []}
+
+    avg_score = round(sum(r["score"] for r in records) / len(records), 1)
+    return {
+        "user_name": user_name,
+        "count": len(records),
+        "avg_score": avg_score,
+        "records": records,
+    }

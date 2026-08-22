@@ -45,6 +45,28 @@ if submitted:
         except requests.exceptions.RequestException:
             st.error("백엔드에 연결할 수 없습니다. 터미널 1에서 백엔드가 켜져 있는지 확인하세요.")
 
+st.subheader("내 기록 조회")
+lookup_name = st.text_input("조회할 이름")
+lookup_clicked = st.button("내 기록 보기")
+
+if lookup_clicked:
+    if not lookup_name:
+        st.warning("이름을 입력해주세요")
+    else:
+        try:
+            user_res = requests.get(
+                f"{BACKEND_URL}/records/user/{lookup_name}", timeout=5
+            ).json()
+            if user_res["count"] == 0:
+                st.info(f"'{lookup_name}' 이름으로 남긴 기록이 없습니다.")
+            else:
+                m_col1, m_col2 = st.columns(2)
+                m_col1.metric("내 기록 수", user_res["count"])
+                m_col2.metric("평균 만족도", user_res["avg_score"])
+                st.dataframe(pd.DataFrame(user_res["records"]))
+        except requests.exceptions.RequestException:
+            st.error("백엔드에 연결할 수 없습니다. 터미널 1에서 백엔드가 켜져 있는지 확인하세요.")
+
 st.subheader("전체 기록")
 try:
     records_res = requests.get(f"{BACKEND_URL}/records", timeout=5).json()
