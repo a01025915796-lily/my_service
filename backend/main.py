@@ -1,5 +1,7 @@
 import json
+import os
 import random
+import tempfile
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -122,6 +124,34 @@ def get_stats():
         "overall_avg": overall_avg,
         "by_region": by_region,
     }
+
+
+@app.delete("/records/{record_id}")
+def delete_record(record_id: str):
+    records = []
+    if DATA_FILE.exists():
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    records.append(json.loads(line))
+
+    remaining = [r for r in records if r.get("id") != record_id]
+
+    if len(remaining) == len(records):
+        raise HTTPException(status_code=404, detail="record not found")
+
+    fd, tmp_path = tempfile.mkstemp(dir=DATA_FILE.parent, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            for r in remaining:
+                f.write(json.dumps(r, ensure_ascii=False) + "\n")
+        os.replace(tmp_path, DATA_FILE)
+    except Exception:
+        os.remove(tmp_path)
+        raise
+
+    return {"deleted": record_id}
 
 
 @app.get("/records/user/{user_name}")
