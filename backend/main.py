@@ -1,3 +1,5 @@
+import csv
+import io
 import json
 import os
 import random
@@ -7,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 app = FastAPI(title="Location API")
@@ -94,6 +97,27 @@ def get_records(region: str | None = None, min_score: int | None = None, keyword
         records = [r for r in records if keyword_lower in r.get("memo", "").lower()]
 
     return {"count": len(records), "records": records}
+
+
+@app.get("/records/export.csv")
+def export_records_csv(region: str | None = None, min_score: int | None = None, keyword: str | None = None):
+    result = get_records(region=region, min_score=min_score, keyword=keyword)
+    records = result["records"]
+
+    columns = ["id", "user_name", "region", "score", "memo", "lat", "lon", "created_at"]
+    buffer = io.StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=columns)
+    writer.writeheader()
+    for r in records:
+        writer.writerow({col: r.get(col, "") for col in columns})
+
+    csv_bytes = buffer.getvalue().encode("utf-8-sig")
+
+    return Response(
+        content=csv_bytes,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=records.csv"},
+    )
 
 
 @app.get("/stats")
